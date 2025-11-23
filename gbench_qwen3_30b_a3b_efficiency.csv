@@ -1,6 +1,4 @@
 method, hyperparameter, TP, TN, FP, FN, total_reviews, avg_inp_tokens, avg_opt_tokens, note
-standard, enable_thinking false,
-standard, enable thinking true, , , , , , , , 后续其他method实验当中默认都使用enable thinking true
 simple pessimistic,pes@1,84,86,123,7,300,3000.27,1612.4372
 simple pessimistic,pes@2,84,107,102,7,600,3000.27,1612.4372
 simple pessimistic,pes@3,82,114,95,9,900,3000.27,1612.4372
@@ -24,10 +22,7 @@ vertical pessimistic, vp@28,78,91,118,13,1206,6075.82,1413.34
 vertical pessimistic, vp@32,78,97,112,13,1076,6114.19,1405.22
 vertical pessimistic, vp@36,81,90,119,10,974,6093.62,1462.08
 
-
-progressive, progressive@1/6,85,48,161,6,300,5091.88,2009.38
-progressive, progressive@2/6,79,102,107,12,792,4619.64,1746.64
-progressive, progressive@3/6,71,144,65,20,1536,4061.75,1555.63
-progressive, progressive@4/6,65,170,39,26,2617,3629.86,1351.88
-
-
+progressive, progressive@1/6,84,76,133,7,300,3000.28,1553.54
+progressive, progressive@2/6,81,116,93,10,734,3637.23,1557.10
+progressive, progressive@3/6,73,153,56,18,1430,3552.93,1458.04
+progressive, progressive@4/6,67,183,26,24,2456,3374.69,1300.68
