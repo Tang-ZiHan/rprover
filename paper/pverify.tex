@@ -6,6 +6,11 @@
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{siunitx}
 
 \usepackage{lineno}
 
@@ -20,7 +25,6 @@
 \definecolor{PromptBack}{HTML}{F7F9FC}    % 背景色
 \definecolor{PromptTitle}{HTML}{1B1F3B}   % 标题文字色
 
-% 适合一小段文本的盒子（不用 verbatim）
 \newtcolorbox{promptbox}[2][]{%
   enhanced,
   breakable,
@@ -38,7 +42,6 @@
   #1
 }
 
-% 适合直接粘贴完整 prompt（代码风、等宽字体）
 \newtcblisting{promptlisting}[2][]{%
   enhanced,
   breakable,
@@ -76,17 +79,6 @@ Department of Computer Science\\
 Cranberry-Lemon University\\
 Pittsburgh, PA 15213, USA \\
 \texttt{\{hippo,brain,jen\}@cs.cranberry-lemon.edu} \\
-\And
-Ji Q. Ren \& Yevgeny LeNet \\
-Department of Computational Neuroscience \\
-University of the Witwatersrand \\
-Joburg, South Africa \\
-\texttt{\{robot,net\}@wits.ac.za} \\
-\AND
-Coauthor \\
-Affiliation \\
-Address \\
-\texttt{email}
 }
 
 % The \author macro works with any number of authors. There are two commands
@@ -109,8 +101,15 @@ Address \\
 \maketitle
 
 \begin{abstract}
-  The key limitation of the verification performance lies in the ability of error detection. With this intuition we designed several variants of pessimistic verification, which are simple workflows that could significantly improve the verification of open-ended math questions. In pessimistic verification we conducts multiple reviews on a single proof with a special focus on certain parts, and reports false if any one of them finds an error. This simple technique significantly improves the performance across many math verification benchmarks without introducing too much extra budget. Its token efficiency even surpassed extended long-cot in test-time scaling. Self verification and correction are one of the central perspectives of reasoning and intelligence. This enables an agent to constantly refine its own reasoning or actions, and they are also critical for effectively performing long tasks such as mathematical research. We believe pessimistic verification would be especially useful for many related researches.
+  The key limitation of the verification performance lies in the ability of error detection. With this intuition we designed several variants of pessimistic verification, which are simple workflows that could significantly improve the verification of open-ended math questions. In pessimistic verification we construct multiple parallel verifications for the same proof, and the proof is deemed incorrect if any one of them reports an error. This simple technique significantly improves the performance across many math verification benchmarks without introducing too much extra budget. Its token efficiency even surpassed extended long-cot in test-time scaling. Our case studies further indicate that the majority of false negatives in stronger models are actually caused by annotation errors or inconsistent evaluation standards in the original dataset, so our method's performance is in fact underestimated. Self verification and correction should be considered as one of the central perspectives of reasoning and intelligence. This enables an agent to constantly refine its own reasoning or actions, and they are also critical for effectively performing long tasks such as mathematical research. We believe pessimistic verification would be especially useful for many related researches.
 \end{abstract}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1.0\textwidth]{paper_efficiency_panels.pdf}
+  \caption{The response-level performance and efficiency of pessimistic verification methods on GPT-5-mini. The equivalent output tokens is calculated by weighting the model's input and output token prices. For GPT-5-mini it is (input\_tokens / 8 + output\_tokens). These results indicate that pessimistic verification has stable and efficient scalability.}
+  \label{fig:efficiency-gpt-5-mini}
+\end{figure}
 
 \section{Introduction}
 
@@ -153,7 +152,7 @@ In this work, we treat mathematical proof verification as a binary classificatio
 
 \subsection{Simple pessimistic verification}
 
-A common strategy of enhancing model capability is through majority voting. In majority voting we run the same requests in parallel for multiple times, and choose the majority as final answer. However, this mechanism does not work on verification tasks according to our experiments and some related researches~\citep{pandit_hard2verify_2025}.
+A common strategy of enhancing model capability is through majority voting. In majority voting we run the same requests in parallel for multiple times, and choose the majority as final answer. However, this mechanism does not work on verification tasks according to our experiments and some related researches~\citep{pandit_hard2verify_2025, mahdavi_scaling_2025}.
 
 In simple pessimistic verification, we conduct multiple reviews on a single proof as majority voting, but instead of using the majority as final answer, we will constantly choose the worst verification from these reviews. As shown in Figure~\ref{fig:pes-vs-maj}, this method drasticly improves the overall performance of evaluation where majority has almost no effect.
 
@@ -161,7 +160,7 @@ We can roughly understand this phenomenon as follows: since the most difficult p
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=1.0\textwidth]{./pes_vs_maj.pdf}
+  \includegraphics[width=1.0\textwidth]{./review_metric_trends.pdf}
   \caption{The comparion of simple pessimistic verification and majority voting. The former exhibits steady performance gains as sampling budget increases, whereas the latter shows almost no changes in performance.}
   \label{fig:pes-vs-maj}
 \end{figure}
@@ -195,24 +194,82 @@ In our experiments we primarily use three datasets for evaluation, and we consta
 
 \begin{itemize}
   \item \textbf{IMO-GradingBench}~\citep{luong_towards_2025}. This dataset contains 1,000 human-graded solutions to IMO-level proof problems from IMO-ProofBench~\citep{luong_towards_2025}, from which we selected a subset with 300 samples for evaluation. This is a challenging test of fine-grained mathematical proof evaluation.
-  \item \textbf{Hard2Verify}~\citep{pandit_hard2verify_2025}. Hard2Verify contains 200 challenging problems and solutions from recent math conpetitions such as IMO and Putnam. The solutions are generated by strong models such as GPT-5 and Gemini 2.5 Pro and annotated by humans.
-  \item \textbf{QiuZhen-Bench}. This is a homemade collection of advanced math problems, with questions sourced from challenging university-level math competitions. It serves as a supplement to the previous two elementary math competition problem datasets. We randomly selected a subset of 300 problems, had them answered by GPT-5-mini, and used GPT-5 for labeling. This subset can be used to evaluate the performance of weaker models. You can refer to Appendix~\ref{sec:qiuzhen-bench} for more details.
+  \item \textbf{Hard2Verify}~\citep{pandit_hard2verify_2025}. Hard2Verify contains 200 challenging problems and solutions from recent math conpetitions such as IMO and Putnam. The solutions are generated by strong models such as GPT-5~\citep{openai_gpt5_system_card_2025} and Gemini 2.5 Pro\citep{google_gemini25pro} and annotated by humans.
+  \item \textbf{QiuZhen-Bench}. This is a homemade collection of advanced math problems, with questions sourced from challenging university-level math competitions. It serves as a supplement to the previous two elementary math competition problem datasets. We randomly selected a subset of 300 problems, had them answered by GPT-5-mini, and used GPT-5 with progressive@3/6 for labeling. This subset can be used to evaluate the performance of weaker models. You can refer to Appendix~\ref{sec:qiuzhen-bench} for more details.
 \end{itemize}
 
-All evaluation in our experiments was conducted at the response level, and for IMO-GradingBench, only the responses that obtained fully 7 points are considered correct, otherwise they will all be considered false. And aside from our experiments, we will simply use single pass verification with different reasoning effort setting as the baseline, since we already know that majority voting has almost no effect on evaluation. In all our experiments we set the temperature parameter to 1.0 to ensure the diversity of the response.
+All evaluation in our experiments was conducted at the response level, and for IMO-GradingBench, only the responses that obtained fully 7 points are considered correct, otherwise they will all be considered false. And aside from our experiments, we will simply use single pass verification with different reasoning effort setting as the baseline, since we already know that majority voting has almost no effect on evaluation. In all our experiments we set the temperature parameter to 1.0 to ensure diversity of the responses.
 
-\subsection{Performance}
+\subsection{Main results}
+
+We begin by conducting some scaling experiments to test the effect of hyperparameter settings in pessimistic verification methods. In addition to the experiments on GPT-5-mini~\citep{openai_gpt5_system_card_2025} shown in Figure~\ref{fig:efficiency-gpt-5-mini}, we also conducted corresponding experiments on the smaller models Qwen3-30B-A3B~\citep{yang_qwen3_2025}. These results are summarized in Figure~\ref{fig:qwen-scaling}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=1.0\textwidth]{tnr_f1_comparison.pdf}
-  \caption{The main results on IMO-GradingBench. Thinking mode is enabled for all models if possible, and the reasoning effort of gpt series model is set to medium. This method constantly improves the classification performance across all tested models.}
+  To be filled
+  \caption{The response-level performance and efficiency of three pessimistic verification methods on Qwen3-30B-A3B.}
+  \label{fig:qwen-scaling}
+\end{figure}
+
+These experiments showed similar trend of our methods. All three types of pessimistic verifications constantly benefit from scaling up computational budget. The performance of the vertical pessimistic method appears to be more influenced by the specific dataset, but when the segmentation is sufficiently fine-grained, it does indeed improve performance in situations where the proof has been read through only once. And as the combination of simple and vertical methods, progressive pessimistic verification constantly exhibits the highest performance and efficiency. Moreover, on models that the length of chain of thought is controlable (i.e. GPT-5-mini), simple and progressive methods constantly exhibits higher efficiency in test-time scaling than long chain of thought. Their parallel nature makes them even faster than long chains of reasoning.
+
+Then we have also conducted vast experiments with standard and progressive pessimistic verification methods across different models on all three datasets, and the main results is summarized in Figure~\ref{fig:main-results}. In these experiments we use the hyperparameter setting progressive@3/6 for balanced performance and efficiency. From these graphs we can read several key findings:
+
+\begin{itemize}
+  \item Error detecting is the key ability that separates strong verifiers from the weak which is also discovered in some recent works~\citep{pandit_hard2verify_2025}. On all datasets the TPR is almost the same across all models from strong to weak, while TNR varies a lot.
+  \item Merely from statistics we can see that progressive pessimistic verification can significantly increase TNR and balanced F1 score for most models, with a small tradeoff of TPR.
+  \item Weaker models tend to exhibit higher performance gains with a greater degression of TPR. The consistency on positive samples is also an important indicator of the verification ability of LLMs.
+  \item In fact, based on more fine-grained case studies\ref{sec:case-analysis}, we found that for stronger models, the decrease in TPR is largely an illusion caused by dataset annotation, and the actual performance improvement is being underestimated.
+\end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1.0\textwidth]{gradebench_main_results.pdf}
+  \includegraphics[width=1.0\textwidth]{h2e_main_result.pdf}
+  \includegraphics[width=1.0\textwidth]{yau_bench_main_results.pdf}
+  \caption{The main results on IMO-GradingBench, Hard2Verify and QiuZhen-Bench. Thinking mode is enabled for all models if possible, and the reasoning effort of gpt series model is set to medium. This method constantly improves the classification performance across all tested models.}
   \label{fig:main-results}
 \end{figure}
 
-\subsection{Scaling potential of pessimistic verification}
+\subsection{Case study}\label{sec:case-analysis}
 
-\subsection{Case study}
+To better analyze performance beyond aggregated statistics and reflect more realistic behavior, we also conducted a detailed case study on the results of the pessimistic verification. In this evaluation, we focus primarily on the False Negative cases, because TP and TN generally represent correct classifications, while most FP cases occur simply because our verifier failed to detect existing errors in the proof. FN cases are usually the most informative.
+
+Surprisingly, we found that most of the FN cases produced by GPT-5-mini or stronger models under pessimistic verification did in fact identify real, critical errors in the proofs. These errors had been mistakenly labeled as correct by the dataset annotators. This indicates, on one hand, that our previous experiments substantially underestimated the verification capability of stronger models, and on the other hand, it supports the validity of using GPT-5 to annotate QiuZhen-Bench. Meanwhile, many smaller models do indeed produce a large number of unwarranted False Negative judgments.
+
+The statistical results of our case study can be found in Table~\ref{table:case-studies}. In the Appendix~\ref{sec:case-studies}, we also provide several concrete examples of mislabeling in the original dataset, and the full set of cases we examined is available in our open-source code repository. Our classification criteria are based on whether the errors identified by these models in FN cases are:
+
+\begin{itemize}
+  \item \textbf{Critical}. If our verifier does uncover a critical error that was overlooked in the original dataset annotation, or a difficult-to-resolve tricky skip, it directly affects the correctness of the entire proof.
+  \item \textbf{Minor}. If our verifier identified a typo or minor errors that can be easily fixed. In such cases, whether it should be judged as an error depends entirely on subjective criteria.
+  \item \textbf{Nonsense}. If our verifier misunderstands the problems and produces some unwarranted judgments. These are the truly harmful false negatives.
+\end{itemize}
+
+\begin{table}[htbp]
+    \centering
+    \begin{threeparttable}
+    \label{tab:example}
+    \begin{tabularx}{1.0\textwidth}{
+        l
+        l
+        S[table-format=2.0]
+        S[table-format=2.0]
+        S[table-format=2.0]
+        S[table-format=2.0]
+    }
+        \toprule
+        {\bf Model} & {\bf Dataset} & {\bf Critical} & {\bf Minor} & {\bf Nonsense} \\
+        \midrule
+        GPT-5-mini & IMO-GradingBench & 8 & 0 & 1 \\
+        \midrule
+        Qwen3-30B-A3B & IMO-GradingBench & 3 & 2 & 10 \\
+        \bottomrule
+    \end{tabularx}
+      \caption{Manual review of FN cases in pessimistic verification. The classification is based on whether the judgments provided by the verifier in these FN cases are critical, minor, or nonsense.}\label{table:case-studies}
+    \end{threeparttable}
+\end{table}
+
+We also encourage the community to conduct more experiments on pessimistic verification in order to better determine its true performance.
 
 \section{Related work}
 
@@ -241,7 +298,7 @@ We are also excited about the future works inspired by our pessimistic verificat
 \appendix
 \section{Appendix}
 
-\subsection{Detail in QiuZhen-Bench}\label{sec:qiuzhen-bench}
+\subsection{Details in QiuZhen-Bench}\label{sec:qiuzhen-bench}
 
 QiuZhen-Bench is a dataset covering a wide range of topics in advanced math, including analysis, algebra, machine learning theory, geometry, topology, probability, statistics and theoretical physics. We have collected 143 exam papers from S.-T. Yau College Student Mathematics Contest since 2010, and the doctoral qualifying exams fron QiuZhen college, Tsinghua University since 2023, and required GPT-5 to extract and reformat problems directly from the PDF files. Manual spot checks did not reveal any errors in these extracted contents, indicating the strong capability of GPT-5 in doing this task. We firstly divide the exam papers into pages, and for each page we used the following prompt for extraction:
 
@@ -268,7 +325,8 @@ Output strictly as JSON array of objects with keys:
   - source_pages: array of integers (page numbers within this PDF chunk)
 Return ONLY JSON.
 
-fSource: {source.rel_path}\nPages: {chunk.start_page}-{chunk.end_page}
+fSource: {source.rel_path}
+Pages: {chunk.start_page}-{chunk.end_page}
 \end{promptlisting}
 
 The problems that spans across two pages is extracted by part and combined in the following processing logic. This results in a dataset containing 1,054 problems in total. Here we provide some samples from this dataset:
@@ -372,15 +430,13 @@ Consistency and error-severity policy (important):
 Response requirements: If the chunk is correct overall (possibly with minor issues), reply with `<verification>true</verification>` and briefly list minor issues if any. 
 If the chunk is incorrect, reply with `<verification>false</verification>` followed by a concise description of the most harmful error in the proof that you found in the chunk.
 
-f<problem>{problem}</problem>
+<problem>{problem}</problem>
 
-f<full_answer>{full_proof}</full_answer>
+<full_answer>{full_proof}</full_answer>
 
-f<chunk_index>{idx}</chunk_index>
-f<chunk>{chunk}</chunk>
+<chunk_index>{idx}</chunk_index>
+<chunk>{chunk}</chunk>
 \end{promptlisting}
-
-\subsection{Original data in experiments}
 
 \subsection{More detailed case studies}\label{sec:case-studies}
 
@@ -503,7 +559,7 @@ Therefore, there are infinitely many integers $n$ such that $A_n$ divides $n+202
 The manually annotated label in the dataset is true (7 points), while our method found a critical error in it:
 
 \begin{promptbox}{Case1: review from GPT-5-mini}
-<verification>false</verification>
+\verb|<verification>false</verification>|
 
 The main (fatal) error is in Claim~1: the author replaces the integer count
 \[
@@ -651,7 +707,7 @@ This completes the proof that such polynomials exist.
 \end{promptbox}
 
 \begin{promptbox}{Case2: review from GPT-5-mini}
-  <verification>false</verification>
+  \verb|<verification>false</verification>|
   The fatal error is in Step 2: the author claims  $ Q_0(x) = L^{-1}(S(L(x))) $  with  $ L(x)=x+4 $  and then uses this to conclude that  $ R(x)=L^{-1}(S_k(L(x)))  $ commutes with  $ Q_0 $  whenever  $ S_k $  commutes with S. But  $ Q_0(x)=1/4(x+4)^2- $ 1 equals  $ S(L(x)) $, not  $ L^{-1}(S(L(x))) $. That mistaken conjugation breaks the commuting argument: the equality  $ R(Q_0(x)) = Q_0(R(x)) $  does not follow from  $ S_k\circ S = S\circ S_k $  under the provided definitions, and the displayed  $ R(x)=S_k(x+4)-4 $  need not commute with  $ Q_0 $. (Thus the key commuting-polynomial construction is invalid as written.)
 \end{promptbox}
 
@@ -728,7 +784,7 @@ Final Answer: The final answer is $\boxed{P(x) \text{ and } Q(x) \text{ exist}}$
 
 
 \begin{promptbox}{Case3: review from qwen3-30b-a3b}
-  <verification>false</verification>  
+\verb|<verification>false</verification>|
 The solution incorrectly constructs $ Q(x) $ as a linear polynomial (degree 1), violating the problem's requirement that $ \deg(Q) \geq 2 $. This critical error undermines the correctness of the solution.
 \end{promptbox}
 
@@ -831,9 +887,8 @@ This shows that $M(f) \leq 2^{70}$.
 \end{promptbox}
 
 \begin{promptbox}{Case4: review from qwen3-30b-a3b}
-  
+\verb|<verification>false</verification>|
 
-<verification>false</verification>  
 The solution incorrectly claims that the function $ f $ corresponds to vector addition in $ \mathbb{F}_2^{120} $, which is invalid because $ f $ is defined via union (not symmetric difference). It also wrongly asserts that $ f $ restricted to the core $ C_f $ is a permutation, which fails to account for possible non-injective behavior of $ f $. Additionally, the analysis of the core assumes each $ N(x) $ is a singleton, which is not guaranteed by the problem's conditions. These critical errors undermine the proof's validity."
  
 \end{promptbox}
